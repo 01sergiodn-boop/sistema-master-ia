@@ -32,7 +32,8 @@ except Exception:
 def configurar_ia(chave):
     genai.configure(api_key=chave)
     instrucao = 'Você é a IA do SISTEMA MASTER. Analise a imagem e devolva a estrutura exata. Responda APENAS com um JSON válido (lista de dicionários) com as chaves: "tipo" ("texto", "forma", "imagem"), "conteudo", "cor_hex", "tamanho_fonte", "x_percent", "y_percent", "largura_percent", "altura_percent".'
-    return genai.GenerativeModel('gemini-1.5-pro', system_instruction=instrucao)
+    # A MÁGICA ESTÁ AQUI: Trocamos pro por flash
+    return genai.GenerativeModel('gemini-1.5-flash', system_instruction=instrucao)
 
 def hex_para_rgb(hex_color):
     hex_color = hex_color.replace('#', '')
@@ -84,25 +85,4 @@ arquivo_imagem = st.file_uploader("Arraste seu design ou screenshot aqui", type=
 if arquivo_imagem:
     st.image(arquivo_imagem, use_container_width=True)
     formato = st.selectbox("📏 Formato:", ["Widescreen (16:9)", "Quadrado (1:1)"])
-    larg_slide, alt_slide = (10.0, 5.625) if "Widescreen" in formato else (10.0, 10.0)
-    
-    if st.button("🚀 Processar com IA", type="primary", use_container_width=True):
-        if not chave_api:
-            st.error("⚠️ A Chave API não foi encontrada nos Segredos do Streamlit!")
-        else:
-            try:
-                img_pil = Image.open(arquivo_imagem)
-                with st.status("Processando...", expanded=True) as status:
-                    st.write("🧠 Cérebro IA analisando geometria...")
-                    modelo = configurar_ia(chave_api)
-                    resposta = modelo.generate_content([img_pil, "Gere o JSON."])
-                    
-                    st.write("⚡ Montando slides na velocidade da luz...")
-                    dados_json = json.loads(resposta.text.replace('```json', '').replace('```', '').strip())
-                    pptx_pronto = gerar_powerpoint(dados_json, img_pil, larg_slide, alt_slide)
-                    
-                    status.update(label="Pronto!", state="complete", expanded=False)
-                
-                st.download_button("⬇️ Baixar .PPTX", pptx_pronto, "sistema.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation", use_container_width=True)
-            except Exception as e:
-                st.error(f"Erro: {e}")
+    larg_slide, alt_slide = (10.0, 5.625) if "Widescreen" in formato else (10
