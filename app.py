@@ -23,8 +23,9 @@ def configurar_ia(chave):
         '"tamanho_fonte", "x_percent", "y_percent", '
         '"largura_percent", "altura_percent".'
     )
+    # AQUI ESTÁ A CORREÇÃO: Usando o nome completo exigido pelo Google
     return genai.GenerativeModel(
-        'gemini-1.5-flash', 
+        'gemini-1.5-flash-latest', 
         system_instruction=instrucao
     )
 
