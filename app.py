@@ -1,7 +1,6 @@
 import streamlit as st
 import json
 import io
-import os
 import re
 import cv2
 import numpy as np
@@ -14,8 +13,8 @@ import google.generativeai as genai
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN
-from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_AUTO_SHAPE_TYPE
+from pptx.dml.color import RGBColor
 
 # =========================================================
 # CONFIG
@@ -59,6 +58,7 @@ ocr = carregar_ocr()
 # =========================================================
 
 def carregar_modelo():
+
     system_prompt = """
 Você é um sistema profissional de reconstrução de layouts.
 
@@ -102,7 +102,8 @@ Formato obrigatório:
     "x_percent":0.1,
     "y_percent":0.2,
     "largura_percent":0.5,
-    "altura_percent":0.1
+    "altura_percent":0.1,
+    "z_index":1
   }
 ]
 
@@ -122,6 +123,7 @@ Tipos permitidos:
 # =========================================================
 
 def limpar_json(texto):
+
     texto = texto.replace("```json", "")
     texto = texto.replace("```", "").strip()
 
@@ -133,7 +135,9 @@ def limpar_json(texto):
     return json.loads(match.group(0))
 
 def hex_para_rgb(hex_color):
+
     try:
+
         hex_color = hex_color.replace("#", "")
 
         if len(hex_color) != 6:
@@ -148,7 +152,12 @@ def hex_para_rgb(hex_color):
     except:
         return RGBColor(0, 0, 0)
 
+# =========================================================
+# OCR
+# =========================================================
+
 def detectar_textos_ocr(img_pil):
+
     img_cv = cv2.cvtColor(
         np.array(img_pil),
         cv2.COLOR_RGB2BGR
@@ -161,7 +170,9 @@ def detectar_textos_ocr(img_pil):
     h, w = img_cv.shape[:2]
 
     for bloco in resultado:
+
         for linha in bloco:
+
             pontos = linha[0]
             texto = linha[1][0]
 
@@ -224,7 +235,6 @@ def adicionar_texto(slide, elemento, larg_slide, alt_slide):
 
     p.text = elemento.get("conteudo", "")
 
-    # ALIGN
     align = elemento.get("align", "left")
 
     if align == "center":
@@ -236,7 +246,6 @@ def adicionar_texto(slide, elemento, larg_slide, alt_slide):
     else:
         p.alignment = PP_ALIGN.LEFT
 
-    # FONT
     font = p.font
 
     font.name = elemento.get(
@@ -265,6 +274,10 @@ def adicionar_texto(slide, elemento, larg_slide, alt_slide):
 
     if peso == "bold":
         font.bold = True
+
+# =========================================================
+# FORMAS
+# =========================================================
 
 def adicionar_forma(slide, elemento, larg_slide, alt_slide):
 
@@ -297,6 +310,10 @@ def adicionar_forma(slide, elemento, larg_slide, alt_slide):
             "#CCCCCC"
         )
     )
+
+# =========================================================
+# IMAGEM
+# =========================================================
 
 def adicionar_imagem(
     slide,
@@ -333,6 +350,10 @@ def adicionar_imagem(
         Inches(elemento["altura_percent"] * alt_slide)
     )
 
+# =========================================================
+# POWERPOINT GENERATION
+# =========================================================
+
 def gerar_ppt(
     dados,
     imagem,
@@ -342,6 +363,7 @@ def gerar_ppt(
     prs = Presentation()
 
     if widescreen:
+
         prs.slide_width = Inches(13.333)
         prs.slide_height = Inches(7.5)
 
@@ -349,6 +371,7 @@ def gerar_ppt(
         alt_slide = 7.5
 
     else:
+
         prs.slide_width = Inches(10)
         prs.slide_height = Inches(10)
 
@@ -359,7 +382,12 @@ def gerar_ppt(
         prs.slide_layouts[6]
     )
 
-    for elemento in dados:
+    elementos_ordenados = sorted(
+        dados,
+        key=lambda x: x.get("z_index", 0)
+    )
+
+    for elemento in elementos_ordenados:
 
         tipo = elemento.get(
             "tipo",
@@ -369,6 +397,7 @@ def gerar_ppt(
         try:
 
             if tipo == "texto":
+
                 adicionar_texto(
                     slide,
                     elemento,
@@ -377,6 +406,7 @@ def gerar_ppt(
                 )
 
             elif tipo == "forma":
+
                 adicionar_forma(
                     slide,
                     elemento,
@@ -385,6 +415,7 @@ def gerar_ppt(
                 )
 
             elif tipo == "imagem":
+
                 adicionar_imagem(
                     slide,
                     elemento,
@@ -394,6 +425,7 @@ def gerar_ppt(
                 )
 
         except Exception as e:
+
             print("Erro elemento:", e)
 
     output = io.BytesIO()
@@ -479,4 +511,5 @@ if arquivo:
                 st.json(dados)
 
         except Exception as e:
+
             st.error(f"Erro: {e}")
