@@ -5,6 +5,6 @@ Pillow
 opencv-python-headless
 numpy
 paddleocr
-paddlepaddle
+paddlepaddle==2.6.1
 rembg
 onnxruntime
