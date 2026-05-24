@@ -64,7 +64,7 @@ with st.sidebar:
 # --- FUNÇÕES DA IA ---
 def configurar_ia(chave):
     genai.configure(api_key=chave)
-    instrucao = """Você é a IA do SISTEMA MASTER. Analise a imagem e devolva a estrutura exata. Responda APENAS com um JSON válido (lista de dicionários) com as chaves: "tipo" ("texto", "forma", "imagem"), "conteudo", "cor_hex", "tamanho_fonte", "x_percent", "y_percent", "largura_percent", "altura_percent"."""
+    instrucao = 'Você é a IA do SISTEMA MASTER. Analise a imagem e devolva a estrutura exata. Responda APENAS com um JSON válido (lista de dicionários) com as chaves: "tipo" ("texto", "forma", "imagem"), "conteudo", "cor_hex", "tamanho_fonte", "x_percent", "y_percent", "largura_percent", "altura_percent".'
     return genai.GenerativeModel('gemini-1.5-pro', system_instruction=instrucao)
 
 def hex_para_rgb(hex_color):
@@ -74,13 +74,16 @@ def hex_para_rgb(hex_color):
 
 def gerar_powerpoint(dados_json, imagem, larg_in, alt_in):
     prs = Presentation()
-    prs.slide_width, prs.slide_height = Inches(larg_in), Inches(alt_in)
+    prs.slide_width = Inches(larg_in)
+    prs.slide_height = Inches(alt_in)
     slide = prs.slides.add_slide(prs.slide_layouts[6]) 
     larg_px, alt_px = imagem.size
 
     for el in dados_json:
-        left, top = Inches(el.get("x_percent", 0) * larg_in), Inches(el.get("y_percent", 0) * alt_in)
-        width, height = Inches(el.get("largura_percent", 0.1) * larg_in), Inches(el.get("altura_percent", 0.1) * alt_in)
+        left = Inches(el.get("x_percent", 0) * larg_in)
+        top = Inches(el.get("y_percent", 0) * alt_in)
+        width = Inches(el.get("largura_percent", 0.1) * larg_in)
+        height = Inches(el.get("altura_percent", 0.1) * alt_in)
         
         if el["tipo"] == "texto":
             txBox = slide.shapes.add_textbox(left, top, width, height)
@@ -88,11 +91,72 @@ def gerar_powerpoint(dados_json, imagem, larg_in, alt_in):
             p.text = el.get("conteudo", "")
             p.font.size = Pt(el.get("tamanho_fonte", 14))
             p.font.color.rgb = hex_para_rgb(el.get("cor_hex", "000000"))
+            
         elif el["tipo"] == "forma":
             shape = slide.shapes.add_shape(1, left, top, width, height)
             shape.fill.solid()
             shape.fill.fore_color.rgb = hex_para_rgb(el.get("cor_hex", "CCCCCC"))
             shape.line.fill.background()
+            
         elif el["tipo"] == "imagem":
-            l, t = int(el.get("x_percent", 0) * larg_px), int(el.get("y_percent", 0) * alt_px)
-            r, b = l + int(el.get("largura_percent", 0.
+            # Coordenadas calculadas em linhas curtas para evitar cortes no telemóvel
+            l = int(el.get("x_percent", 0) * larg_px)
+            t = int(el.get("y_percent", 0) * alt_px)
+            w = int(el.get("largura_percent", 0.1) * larg_px)
+            h = int(el.get("altura_percent", 0.1) * alt_px)
+            
+            r = l + w
+            b = t + h
+            
+            recorte_limpo = remove(imagem.crop((l, t, r, b)))
+            img_bytes = io.BytesIO()
+            recorte_limpo.save(img_bytes, format='PNG')
+            img_bytes.seek(0)
+            slide.shapes.add_picture(img_bytes, left, top, width, height)
+
+    out = io.BytesIO()
+    prs.save(out)
+    out.seek(0)
+    return out
+
+# --- INTERFACE PRINCIPAL ---
+arquivo_imagem = st.file_uploader("Arraste seu design ou screenshot aqui", type=["png", "jpg", "jpeg"])
+
+if arquivo_imagem:
+    col1, col2, col3 = st.columns([1, 4, 1])
+    with col2:
+        st.image(arquivo_imagem, caption="Imagem carregada com sucesso", use_container_width=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    formato = st.selectbox("📏 Escolha o formato de saída:", ["Widescreen (16:9)", "Quadrado (1:1)"])
+    if "Widescreen" in formato:
+        larg_slide = 10.0
+        alt_slide = 5.625
+    else:
+        larg_slide = 10.0
+        alt_slide = 10.0
+    
+    if st.button("🚀 Processar com IA e Gerar PowerPoint", type="primary", use_container_width=True):
+        if not chave_api:
+            st.error("⚠️ Você esqueceu de colocar a Chave API no menu lateral!")
+        else:
+            try:
+                img_pil = Image.open(arquivo_imagem)
+                with st.status("Processando dados visuais...", expanded=True) as status:
+                    st.write("🧠 Cérebro IA analisando geometria e tipografia...")
+                    modelo = configurar_ia(chave_api)
+                    resposta = modelo.generate_content([img_pil, "Gere o JSON."])
+                    
+                    st.write("✂️ Recortando imagens e construindo as camadas...")
+                    texto_limpo = resposta.text.replace('```json', '').replace('```', '').strip()
+                    dados_json = json.loads(texto_limpo)
+                    pptx_pronto = gerar_powerpoint(dados_json, img_pil, larg_slide, alt_slide)
+                    
+                    status.update(label="Apresentação finalizada!", state="complete", expanded=False)
+                
+                st.success("Tudo pronto! Seu arquivo está aguardando o download.")
+                st.download_button("⬇️ Baixar Arquivo .PPTX", pptx_pronto, "sistema_master.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation", use_container_width=True)
+                
+            except Exception as e:
+                st.error(f"Houve uma falha na interpretação da IA: {e}")
