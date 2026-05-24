@@ -23,9 +23,11 @@ st.markdown("""
 st.markdown("<h1 style='text-align: center;'>✨ Sistema Master</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: #888;'>Transforme imagens em apresentações editáveis instantaneamente.</p><br>", unsafe_allow_html=True)
 
-with st.sidebar:
-    st.markdown("### ⚙️ Cérebro da IA")
-    chave_api = st.text_input("Chave API do Gemini:", type="password")
+# --- PUXANDO A CHAVE SECRETA AUTOMATICAMENTE ---
+try:
+    chave_api = st.secrets["GEMINI_API_KEY"]
+except Exception:
+    chave_api = ""
 
 def configurar_ia(chave):
     genai.configure(api_key=chave)
@@ -61,7 +63,6 @@ def gerar_powerpoint(dados_json, imagem, larg_in, alt_in):
             shape.line.fill.background()
             
         elif el["tipo"] == "imagem":
-            # Recorte direto e super rápido (sem tentar tirar o fundo)
             l = int(el.get("x_percent", 0) * larg_px)
             t = int(el.get("y_percent", 0) * alt_px)
             r = l + int(el.get("largura_percent", 0.1) * larg_px)
@@ -87,7 +88,7 @@ if arquivo_imagem:
     
     if st.button("🚀 Processar com IA", type="primary", use_container_width=True):
         if not chave_api:
-            st.error("⚠️ Coloque a Chave API no menu lateral!")
+            st.error("⚠️ A Chave API não foi encontrada nos Segredos do Streamlit!")
         else:
             try:
                 img_pil = Image.open(arquivo_imagem)
