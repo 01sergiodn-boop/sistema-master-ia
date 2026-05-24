@@ -6,8 +6,8 @@ from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from PIL import Image
-from rembg import remove
 
+# --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Sistema Master | IA", page_icon="✨", layout="centered")
 
 st.markdown("""
@@ -53,17 +53,23 @@ def gerar_powerpoint(dados_json, imagem, larg_in, alt_in):
             p.text = el.get("conteudo", "")
             p.font.size = Pt(el.get("tamanho_fonte", 14))
             p.font.color.rgb = hex_para_rgb(el.get("cor_hex", "000000"))
+            
         elif el["tipo"] == "forma":
             shape = slide.shapes.add_shape(1, left, top, width, height)
             shape.fill.solid()
             shape.fill.fore_color.rgb = hex_para_rgb(el.get("cor_hex", "CCCCCC"))
             shape.line.fill.background()
+            
         elif el["tipo"] == "imagem":
-            l, t = int(el.get("x_percent", 0) * larg_px), int(el.get("y_percent", 0) * alt_px)
-            r, b = l + int(el.get("largura_percent", 0.1) * larg_px), t + int(el.get("altura_percent", 0.1) * alt_px)
-            recorte_limpo = remove(imagem.crop((l, t, r, b)))
+            # Recorte direto e super rápido (sem tentar tirar o fundo)
+            l = int(el.get("x_percent", 0) * larg_px)
+            t = int(el.get("y_percent", 0) * alt_px)
+            r = l + int(el.get("largura_percent", 0.1) * larg_px)
+            b = t + int(el.get("altura_percent", 0.1) * alt_px)
+            
+            recorte = imagem.crop((l, t, r, b))
             img_bytes = io.BytesIO()
-            recorte_limpo.save(img_bytes, format='PNG')
+            recorte.save(img_bytes, format='PNG')
             img_bytes.seek(0)
             slide.shapes.add_picture(img_bytes, left, top, width, height)
 
@@ -83,14 +89,19 @@ if arquivo_imagem:
         if not chave_api:
             st.error("⚠️ Coloque a Chave API no menu lateral!")
         else:
-            img_pil = Image.open(arquivo_imagem)
-            with st.status("Processando...", expanded=True) as status:
-                st.write("🧠 Analisando...")
-                modelo = configurar_ia(chave_api)
-                resposta = modelo.generate_content([img_pil, "Gere o JSON."])
-                st.write("✂️ Recortando...")
-                dados_json = json.loads(resposta.text.replace('```json', '').replace('```', '').strip())
-                pptx_pronto = gerar_powerpoint(dados_json, img_pil, larg_slide, alt_slide)
-                status.update(label="Pronto!", state="complete", expanded=False)
-            
-            st.download_button("⬇️ Baixar .PPTX", pptx_pronto, "sistema.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation", use_container_width=True)
+            try:
+                img_pil = Image.open(arquivo_imagem)
+                with st.status("Processando...", expanded=True) as status:
+                    st.write("🧠 Cérebro IA analisando geometria...")
+                    modelo = configurar_ia(chave_api)
+                    resposta = modelo.generate_content([img_pil, "Gere o JSON."])
+                    
+                    st.write("⚡ Montando slides na velocidade da luz...")
+                    dados_json = json.loads(resposta.text.replace('```json', '').replace('```', '').strip())
+                    pptx_pronto = gerar_powerpoint(dados_json, img_pil, larg_slide, alt_slide)
+                    
+                    status.update(label="Pronto!", state="complete", expanded=False)
+                
+                st.download_button("⬇️ Baixar .PPTX", pptx_pronto, "sistema.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation", use_container_width=True)
+            except Exception as e:
+                st.error(f"Erro: {e}")
