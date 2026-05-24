@@ -14,12 +14,10 @@ st.set_page_config(page_title="Sistema Master | IA", page_icon="✨", layout="ce
 # --- O SEGREDO DO VISUAL GEMINI (CSS INJETADO) ---
 st.markdown("""
 <style>
-    /* Esconde o menu padrão e o rodapé para um visual mais limpo */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
 
-    /* Arredonda as bordas da área de upload e muda a cor */
     [data-testid="stFileUploadDropzone"] {
         border-radius: 20px;
         border: 2px dashed #4285F4;
@@ -31,7 +29,6 @@ st.markdown("""
         background-color: rgba(66, 133, 244, 0.05);
     }
 
-    /* Botões estilo pílula com sombra (Material Design) */
     [data-testid="baseButton-primary"] {
         border-radius: 30px;
         background-color: #1A73E8;
@@ -45,7 +42,6 @@ st.markdown("""
         transform: translateY(-2px);
     }
     
-    /* Suaviza as caixas de alerta (sucesso/erro) */
     [data-testid="stAlert"] {
         border-radius: 15px;
         border: none;
@@ -56,16 +52,16 @@ st.markdown("""
 # --- CABEÇALHO LIMPO ---
 st.markdown("<h1 style='text-align: center; font-weight: 600; letter-spacing: -1px;'>✨ Sistema Master</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: #888; font-size: 1.1rem;'>Transforme imagens em apresentações editáveis instantaneamente.</p>", unsafe_allow_html=True)
-st.markdown("<br>", unsafe_allow_html=True) # Espaçamento invisível
+st.markdown("<br>", unsafe_allow_html=True)
 
 # --- CONFIGURAÇÕES NO MENU LATERAL ---
 with st.sidebar:
     st.markdown("### ⚙️ Cérebro da IA")
     chave_api = st.text_input("Chave API do Gemini:", type="password")
     st.markdown("---")
-    st.info("💡 **Dica:** O processo de recorte de imagens usa redes neurais e pode levar alguns segundos. Mantenha a aba aberta.")
+    st.info("💡 **Dica:** O processo usa redes neurais. Mantenha a aba aberta durante a geração.")
 
-# --- FUNÇÕES DA IA (O Motor) ---
+# --- FUNÇÕES DA IA ---
 def configurar_ia(chave):
     genai.configure(api_key=chave)
     instrucao = """Você é a IA do SISTEMA MASTER. Analise a imagem e devolva a estrutura exata. Responda APENAS com um JSON válido (lista de dicionários) com as chaves: "tipo" ("texto", "forma", "imagem"), "conteudo", "cor_hex", "tamanho_fonte", "x_percent", "y_percent", "largura_percent", "altura_percent"."""
@@ -115,7 +111,6 @@ def gerar_powerpoint(dados_json, imagem, larg_in, alt_in):
 arquivo_imagem = st.file_uploader("Arraste seu design ou screenshot aqui", type=["png", "jpg", "jpeg"])
 
 if arquivo_imagem:
-    # Usamos colunas para deixar a imagem contida e elegante
     col1, col2, col3 = st.columns([1, 4, 1])
     with col2:
         st.image(arquivo_imagem, caption="Imagem carregada com sucesso", use_container_width=True)
