@@ -2,3 +2,9 @@ streamlit
 google-generativeai
 python-pptx
 Pillow
+opencv-python-headless
+numpy
+paddleocr
+paddlepaddle
+rembg
+onnxruntime
